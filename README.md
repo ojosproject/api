@@ -13,16 +13,6 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
-## Usage
-
-```python
-#come back to this once I figure out to use this...
-```
-
-## Contributing
-
-Create a pull request and go wild to contribute
-
 ## License
 
-No clue
+[GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/)
