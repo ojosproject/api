@@ -9,7 +9,7 @@ Use [pip](https://pip.pypa.io/en/stable/) to install dependencies
 
 ```bash
 python -m venv venv
-venv\Scripts\activate
+venv\Scripts\activate # check https://docs.python.org/3/library/venv.html#how-venvs-work
 pip install -r requirements.txt
 ```
 
