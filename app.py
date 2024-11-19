@@ -16,15 +16,15 @@ twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_SID)
 
 @app.route("/send_sms", methods=["POST"])
 def send_sms():
+    """
     data = request.get_json()
-
     recipient = data.get("to")
     message = data.get("message")
 
     if recipient == "" or message == "":
         return jsonify({"error" : "recipient or message not provided"}), 400
     else:
-        
+
         try:
             message = twilio_client.messages.create(
                 body=message,
@@ -34,3 +34,6 @@ def send_sms():
             return jsonify({"status": "success", "sid": message.sid}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+    """
+    # UNCOMMENT WHEN TWILIO INTEGRATION/VERIFICATION IS CONFIRMED
+    return jsonify({"status": "success", "sid": "success message"}), 200
