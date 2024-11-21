@@ -36,4 +36,7 @@ def send_sms():
             return jsonify({"error": str(e)}), 500
     """
     # UNCOMMENT WHEN TWILIO INTEGRATION/VERIFICATION IS CONFIRMED
-    return jsonify({"status": "success", "sid": 1234}), 200
+    return jsonify({"status": "success", "sid": "SM1234"}), 200
+
+if __name__ == "__main__":
+    app.run(debug=True)
