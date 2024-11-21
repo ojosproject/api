@@ -14,7 +14,7 @@ app = Flask(__name__)
 # twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_SID)
 
 
-@app.route("/send_sms", methods=["POST"])
+@app.route("/iris/send_sms/", methods=["POST"])
 def send_sms():
     """
     data = request.get_json()
