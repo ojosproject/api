@@ -2,6 +2,9 @@ from flask import Flask, request, jsonify
 from twilio.rest import Client
 import os
 from dotenv import load_dotenv
+import jwt
+from datetime import datetime, timedelta, time
+import time
 
 load_dotenv()
 
@@ -13,6 +16,30 @@ app = Flask(__name__)
 
 # twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_SID)
 
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+
+@app.route("/iris/register/", methods=["POST"])
+def register():
+    try:
+        user_id = request.json.get("id")
+        # id_list = [] # GET VALID IDs FROM A LIST 
+        # if id in id_list:
+        # if credentials are ever decided to be provided, validate here
+
+        expiration = time.time() + timedelta(30).total_seconds()
+        token = jwt.encode(
+            {"id": user_id, "expiration": expiration},
+            JWT_SECRET_KEY,
+            algorithm= "HS256"
+        )
+
+        #todo: store the token in the api's database here
+        return jsonify({"token": token}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+def _verify():
+    ...
 
 @app.route("/iris/send_sms/", methods=["POST"])
 def send_sms():
