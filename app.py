@@ -5,9 +5,11 @@ Twilio
 import os
 from datetime import datetime, timedelta, time
 import time
+import uuid
 import dotenv
 import jwt
 import psycopg2
+import psycopg2.extras
 
 from twilio.rest import Client
 from flask import Flask, request, jsonify
@@ -16,15 +18,12 @@ dotenv.load_dotenv()
 
 app = Flask(__name__)
 
-# TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
-# TWILIO_AUTH_SID = os.getenv("TWILIO_AUTH_SID")
-# TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
-
-# twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_SID)
-
 DB = os.getenv("INTERNAL_DB_LINK")
-
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
+
+TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
+TWILIO_AUTH_SID = os.getenv("TWILIO_AUTH_SID")
+TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
 
 @app.route("/iris/register/", methods=["POST"])
@@ -35,39 +34,48 @@ def register():
     # call this function there
 
     try:
-        user_id = request.json.get("id")
-        # id_list = [] # GET VALID IDs FROM A LIST
-        # if id in id_list:
-        # if credentials are ever decided to be provided, validate here
+        user_id = uuid.uuid4()
+        # user_id = request.json.get("id")
+        # as of right now, no devices don't have unique ids to provide, so we
+        # will generate a uuid here
 
-        expiration = time.time() + timedelta(30).total_seconds()
+        expiration = time.time() + timedelta(days=30).total_seconds()
+
+        # expiration is 30 days worth of seconds added to the current unix time
+        # their token will expire in 30 days & a new one will need to be generated
+        # todo: add check that their token hasn't expired
+        # todo: also generate a new token with a new expiration date when it does expire
+        # todo: also remove the old token from the table and add the new one
         token = jwt.encode(
             {"id": user_id, "expiration": expiration},
             JWT_SECRET_KEY,
             algorithm="HS256"
         )
 
-        # todo: store the token in the api's database here
+        with psycopg2.connect(DB) as conn:
+            with conn.cursor() as cursor:
+                cursor.execute("INSERT INTO tokens (token, expiration_date) VALUES (:token, :expiration_date);", {
+                               "token": token, "expiration_date": expiration})
+
         return jsonify({"token": token}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-def _verify():
-    ...
-
-
 @app.route("/iris/send_sms/", methods=["POST"])
 def send_sms():
-    """
+    twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_SID)
+
     data = request.get_json()
     recipient = data.get("to")
     message = data.get("message")
+    token = request.headers.get('X-API-Key')
 
     if recipient == "" or message == "":
-        return jsonify({"error" : "recipient or message not provided"}), 400
+        return jsonify({"error": "recipient or message not provided!"}), 400
+    elif not _validate_token(token):
+        return jsonify({"error": "unauthorized token!"}), 401
     else:
-
         try:
             message = twilio_client.messages.create(
                 body=message,
@@ -77,9 +85,6 @@ def send_sms():
             return jsonify({"status": "success", "sid": message.sid}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
-    """
-    # UNCOMMENT WHEN TWILIO INTEGRATION/VERIFICATION IS CONFIRMED
-    return jsonify({"status": "success", "sid": "SM1234"}), 200
 
 
 def _create_tables():
@@ -91,6 +96,27 @@ def _create_tables():
     with psycopg2.connect(DB) as conn:
         with conn.cursor() as cursor:
             cursor.execute(schema_sql)
+
+
+def _validate_token(token):
+    # this takes the token argument and checks the token table for a row that
+    # contains this token. if one exists, then the token is valid.
+    with psycopg2.connect(DB) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("SELECT 1 FROM tokens WHERE token = %s", (token,))
+            if cursor.fetchone() is None:
+                return False
+            return True
+
+
+def _get_all_tokens():
+    rows = []
+    with psycopg2.connect(DB) as conn:
+        with conn.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+            cursor.execute("SELECT * FROM tokens")
+            rows = cursor.fetchall()
+
+    return rows  # returns a list of dictionaries
 
 
 if __name__ == "__main__":

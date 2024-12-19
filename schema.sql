@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS token_log (
     id SERIAL PRIMARY KEY,
     token TEXT REFERENCES tokens(token),
     timestamp NUMERIC
+    message_type TEXT
+    count NUMERIC
 ) STRICT;
 /* 
 SERIAL is an integer type that is automatically assigned and automatically
@@ -17,3 +19,4 @@ for token and timestamp, meaning
 INSERT INTO token_log (token, timestamp) VALUES ("a", 0)
 is valid
 */
+
