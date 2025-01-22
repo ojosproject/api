@@ -31,40 +31,41 @@ TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 @app.route("/iris/register/", methods=["POST"])
 def register():
     _create_tables()
-    # create tables here because this is theoretically the first time the
-    # database will be accessed. If they're first accessed someone else, call
-    # call this function there
+    # create tables here because this should be the first time the database will
+    # be accessed. If they're first accessed someone else, call this function there
 
     try:
         user_id = uuid.uuid4()
         # user_id = request.json.get("id")
         # as of right now, no devices don't have unique ids to provide, so we
         # will generate a uuid here
+        # todo: I REALLY THINK WE SHOULD BE GENERATING DEVICE IDS BY NOW
 
-        expiration = time.time() + timedelta(days=30).total_seconds()
-
-        # expiration is 30 days worth of seconds added to the current unix time
-        # their token will expire in 30 days & a new one will need to be generated
-        # todo: add check that their token hasn't expired
-        # todo: also generate a new token with a new expiration date when it does expire
-        # todo: also remove the old token from the table and add the new one
-        token = jwt.encode(
-            {"id": user_id, "expiration": expiration},
-            JWT_SECRET_KEY,
-            algorithm="HS256"
-        )
-
-        with psycopg2.connect(DB) as conn:
-            with conn.cursor() as cursor:
-                cursor.execute("INSERT INTO tokens (token, expiration_date) VALUES (:token, :expiration_date);", {
-                               "token": token, "expiration_date": expiration})
+        token = _generate_token(user_id)
 
         return jsonify({"token": token}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
-@app.route("/iris/send_sms/", methods=["POST"])
+@app.route("/iris/update-token", methods=["POST"])
+def update_token():
+    try:
+        # user_id = request.json.get("id")
+        user_id = uuid.uuid4()
+
+        token = request.json.get("token")
+
+        if _token_is_expired(token):
+
+            token = _generate_token(user_id)
+
+        return jsonify({"token": token}), 200
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/iris/send-sms/", methods=["POST"])
 def send_sms():
     twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_SID)
 
@@ -81,8 +82,8 @@ def send_sms():
         return jsonify({"error": "unauthorized token!"}), 401
     elif global_cache.contains_max(token):
         # checks if token is rate limited
-        return jsonify({"error": "you've been rate limited"}), 
-        # consider adding a "retry after" message (how to do?)
+        return jsonify({"error": "you've been rate limited"}),
+        # consider adding a "retry after" message, retry after 30 minutes (how to do?)
     else:
         try:
             global_cache.add_to_cache(token)
@@ -107,7 +108,27 @@ def _create_tables():
             cursor.execute(schema_sql)
 
 
-def _validate_token(token):
+def _generate_token(user_id):
+    # inserts the provided token into the tokens table. If it already exists,
+    # it will simply update the token's expiration date
+    expiration = time.time() + timedelta(days=30).total_seconds()
+    # expiration is 30 days worth of seconds added to the current unix time
+    # their token will expire in 30 days & a new one will need to be generated
+    token = jwt.encode(
+        {"id": user_id, "expiration": expiration},
+        JWT_SECRET_KEY,
+        algorithm="HS256"
+    )
+
+    with psycopg2.connect(DB) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("INSERT INTO tokens (token, expiration_date) VALUES (:token, :expiration_date) ON CONFLICT (token) DO UPDATE SET expiration_date = EXCLUDED.expiration_date;", {
+                           "token": token, "expiration_date": expiration})
+
+    return token
+
+
+def _validate_token(token) -> bool:
     # this takes the token argument and checks the token table for a row that
     # contains this token. if one exists, then the token is valid.
     with psycopg2.connect(DB) as conn:
@@ -116,6 +137,17 @@ def _validate_token(token):
             if cursor.fetchone() is None:
                 return False
             return True
+
+
+def _token_is_expired(token) -> bool:
+    # this takes the token argument and checks its expiration_date field,
+    # returning true if it is greater than the current time (expired) and false
+    # otherwise
+    with psycopg2.connect(DB) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute(
+                "SELECT expiration_date FROM tokens WHERE token = %s", (token,))
+            return cursor.fetchone() > time.time()
 
 
 def _get_all_tokens():
@@ -168,7 +200,7 @@ class Cache():
         with self.lock:
             self.cache = {
                 token: token_log for token, token_log in self.cache.items() if (
-                    token_log.time_last_logged + 1800) > time.time()
+                    token_log.time_last_logged + 60) > time.time()
             }
 
 

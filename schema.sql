@@ -7,7 +7,7 @@ CREATE TABLE IF NOT EXISTS token_log (
     id SERIAL PRIMARY KEY,
     token TEXT REFERENCES tokens(token),
     timestamp NUMERIC
-    message_type TEXT
+    message_type TEXT -- SMS, email, etc
     count NUMERIC
 ) STRICT;
 /* 
