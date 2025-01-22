@@ -5,7 +5,9 @@ Twilio
 import os
 from datetime import datetime, timedelta, time
 import time
+from collections import namedtuple
 import uuid
+import threading
 import dotenv
 import jwt
 import psycopg2
@@ -29,7 +31,7 @@ TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 @app.route("/iris/register/", methods=["POST"])
 def register():
     _create_tables()
-    # we create tables here because this is theoretically the first time the
+    # create tables here because this is theoretically the first time the
     # database will be accessed. If they're first accessed someone else, call
     # call this function there
 
@@ -72,11 +74,18 @@ def send_sms():
     token = request.headers.get('X-API-Key')
 
     if recipient == "" or message == "":
+        # checks that all fields are filled
         return jsonify({"error": "recipient or message not provided!"}), 400
     elif not _validate_token(token):
+        # checks if token is a valid token
         return jsonify({"error": "unauthorized token!"}), 401
+    elif global_cache.contains_max(token):
+        # checks if token is rate limited
+        return jsonify({"error": "you've been rate limited"}), 
+        # consider adding a "retry after" message (how to do?)
     else:
         try:
+            global_cache.add_to_cache(token)
             message = twilio_client.messages.create(
                 body=message,
                 from_=TWILIO_PHONE_NUMBER,
@@ -119,10 +128,61 @@ def _get_all_tokens():
     return rows  # returns a list of dictionaries
 
 
+def start_updating_cache():
+    # called in main to periodically update the cache in the background
+    while True:
+        time.sleep(60)
+        global_cache.update_cache()
+
+
+class Cache():
+    Tokenlog = namedtuple("token", ["times_logged", "time_last_logged"])
+
+    def __init__(self):
+        # cache is a dictionary with tokens as keys and a tuple as a value.
+        # the tuple contains how many calls the token has made and the time that
+        # the last call was made.
+        self.cache: dict[str, namedtuple] = {}
+        self.lock = threading.Lock()
+
+    def contains_max(self, token: str) -> bool:
+        with self.lock:
+            if self.cache_contains(token):
+                return self.cache[token].times_logged == 10
+            return False
+
+    def add_to_cache(self, token: str):
+        with self.lock:
+            if self.cache_contains(token):
+                self.cache[token] = self.Tokenlog(
+                    self.cache[token].times_logged + 1, time.time())
+            else:
+                self.cache[token] = self.Tokenlog(1, time.time())
+
+    def cache_contains(self, token: str) -> bool:
+        with self.lock:
+            return token in self.cache
+
+    def update_cache(self):
+        # this function must be periodically called to reset the cache
+        with self.lock:
+            self.cache = {
+                token: token_log for token, token_log in self.cache.items() if (
+                    token_log.time_last_logged + 1800) > time.time()
+            }
+
+
+global_cache = Cache()
+# todo: put the Cache class in a separate .py file for interface purposes
+
 if __name__ == "__main__":
+    thread = threading.Thread(target=start_updating_cache, daemon=True)
+    thread.start()
+
     app.run(debug=True)
 
 # things to keep an eye on:
 # - that passing in the db link as 1 argument will properly call it
 # - that the SERIAL type in postgresql will act as a properly self-generating id
-#
+# - potentially, the Cache class won't be sufficient to handle a lot of traffic
+# look into a caching library like redis in this case
