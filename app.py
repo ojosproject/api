@@ -16,7 +16,7 @@ import psycopg2.extras
 from twilio.rest import Client
 from flask import Flask, request, jsonify
 
-dotenv.load_dotenv()
+dotenv.load_dotenv(override=True)
 
 app = Flask(__name__)
 
@@ -24,7 +24,7 @@ DB = os.getenv("INTERNAL_DB_LINK")
 JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
-TWILIO_AUTH_SID = os.getenv("TWILIO_AUTH_SID")
+TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
 
@@ -57,7 +57,6 @@ def update_token():
         token = request.json.get("token")
 
         if _token_is_expired(token):
-
             token = _generate_token(user_id)
 
         return jsonify({"token": token}), 200
@@ -67,7 +66,7 @@ def update_token():
 
 @app.route("/iris/send-sms/", methods=["POST"])
 def send_sms():
-    twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_SID)
+    twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
 
     data = request.get_json()
     recipient = data.get("to")
@@ -92,6 +91,7 @@ def send_sms():
                 from_=TWILIO_PHONE_NUMBER,
                 to=recipient
             )
+            _log_token(token, time.time(), "SMS")
             return jsonify({"status": "success", "sid": message.sid}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
@@ -160,6 +160,13 @@ def _get_all_tokens():
     return rows  # returns a list of dictionaries
 
 
+def _log_token(token: str, timestamp: float, message_type: str):
+    with psycopg2.connect(DB) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("INSERT INTO token_log (token, timestamp, message_type) VALUES (:token, :timestamp, :message_type)", {
+                           "token": token, "timestamp": timestamp, "message_type": message_type})
+
+
 def start_updating_cache():
     # called in main to periodically update the cache in the background
     while True:
@@ -207,9 +214,48 @@ class Cache():
 global_cache = Cache()
 # todo: put the Cache class in a separate .py file for interface purposes
 
+
+def test_sms_messaging():
+    twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+
+    # data = request.get_json()
+    # recipient = data.get("to")
+    # message = data.get("message")
+    # token = request.headers.get('X-API-Key')
+    recipient = "9498149431"
+    message = "HELP ME"
+    token = "111"
+
+    if recipient == "" or message == "":
+        # checks that all fields are filled
+        return jsonify({"error": "recipient or message not provided!"}), 400
+    # elif not _validate_token(token):
+    #     # checks if token is a valid token
+    #     return jsonify({"error": "unauthorized token!"}), 401
+    # elif global_cache.contains_max(token):
+    #     print("BLUE")
+    #     # checks if token is rate limited
+    #     return jsonify({"error": "you've been rate limited"}),
+    #     # consider adding a "retry after" message, retry after 30 minutes (how to do?)
+    else:
+        try:
+            #global_cache.add_to_cache(token)
+            message = twilio_client.messages.create(
+                body=message,
+                from_=TWILIO_PHONE_NUMBER,
+                to=recipient
+            )
+            # _log_token(token, time.time(), "SMS")
+            return jsonify({"status": "success", "sid": message.sid}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}),
+
+
 if __name__ == "__main__":
     thread = threading.Thread(target=start_updating_cache, daemon=True)
     thread.start()
+
+    b = test_sms_messaging()
 
     app.run(debug=True)
 
