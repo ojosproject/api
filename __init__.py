@@ -1,4 +1,4 @@
-from app import register_routes
+from .app import register_routes
 from flask import Flask
 app = Flask(__name__)
 
