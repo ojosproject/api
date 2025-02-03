@@ -13,6 +13,10 @@ venv\Scripts\activate # check https://docs.python.org/3/library/venv.html#how-ve
 pip install -r requirements.txt
 ```
 
+```bash
+flask --app app run
+```
+
 ## License
 
 [GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/)

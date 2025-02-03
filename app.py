@@ -28,73 +28,77 @@ TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
 TWILIO_PHONE_NUMBER = os.getenv("TWILIO_PHONE_NUMBER")
 
 
-@app.route("/iris/register/", methods=["POST"])
-def register():
-    _create_tables()
-    # create tables here because this should be the first time the database will
-    # be accessed. If they're first accessed someone else, call this function there
+def register_routes(app):
+    @app.route("/iris/register/", methods=["POST"])
+    def register():
+        _create_tables()
+        # create tables here because this should be the first time the database will
+        # be accessed. If they're first accessed someone else, call this function there
 
-    try:
-        user_id = uuid.uuid4()
-        # user_id = request.json.get("id")
-        # as of right now, no devices don't have unique ids to provide, so we
-        # will generate a uuid here
-        # todo: I REALLY THINK WE SHOULD BE GENERATING DEVICE IDS BY NOW
-
-        token = _generate_token(user_id)
-
-        return jsonify({"token": token}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/iris/update-token", methods=["POST"])
-def update_token():
-    try:
-        # user_id = request.json.get("id")
-        user_id = uuid.uuid4()
-
-        token = request.json.get("token")
-
-        if _token_is_expired(token):
-            token = _generate_token(user_id)
-
-        return jsonify({"token": token}), 200
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-
-@app.route("/iris/send-sms/", methods=["POST"])
-def send_sms():
-    twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-
-    data = request.get_json()
-    recipient = data.get("to")
-    message = data.get("message")
-    token = request.headers.get('X-API-Key')
-
-    if recipient == "" or message == "":
-        # checks that all fields are filled
-        return jsonify({"error": "recipient or message not provided!"}), 400
-    elif not _validate_token(token):
-        # checks if token is a valid token
-        return jsonify({"error": "unauthorized token!"}), 401
-    elif global_cache.contains_max(token):
-        # checks if token is rate limited
-        return jsonify({"error": "you've been rate limited"}),
-        # consider adding a "retry after" message, retry after 30 minutes (how to do?)
-    else:
         try:
-            global_cache.add_to_cache(token)
-            message = twilio_client.messages.create(
-                body=message,
-                from_=TWILIO_PHONE_NUMBER,
-                to=recipient
-            )
-            _log_token(token, time.time(), "SMS")
-            return jsonify({"status": "success", "sid": message.sid}), 200
+            user_id = uuid.uuid4()
+            # user_id = request.json.get("id")
+            # as of right now, no devices don't have unique ids to provide, so we
+            # will generate a uuid here
+            # todo: I REALLY THINK WE SHOULD BE GENERATING DEVICE IDS BY NOW
+
+            token = _generate_token(str(user_id))
+
+            return jsonify({"token": token}), 200
         except Exception as e:
             return jsonify({"error": str(e)}), 500
+
+    @app.route("/iris/update-token/", methods=["POST"])
+    def update_token():
+        try:
+            # user_id = request.json.get("id")
+            user_id = uuid.uuid4()
+
+            token = request.json.get("token")
+
+            print("PURPLE")
+            if _token_is_expired(token):
+                print("RED")
+                token = _generate_token(str(user_id))
+                print(token)
+
+            return jsonify({"token": token}), 200
+        except Exception as e:
+            return jsonify({"error": str(e)}), 500
+
+    @app.route("/iris/send-sms/", methods=["POST"])
+    def send_sms():
+        twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
+
+        data = request.get_json()
+        recipient = data.get("to")
+        message = data.get("message")
+        token = request.headers.get('X-API-Key')
+
+        if recipient == "" or message == "":
+            # checks that all fields are filled
+            return jsonify({"error": "recipient or message not provided!"}), 400
+        elif not _validate_token(token):
+            # checks if token is a valid token
+            return jsonify({"error": "unauthorized token!"}), 401
+        elif global_cache.contains_max(token):
+            # checks if token is rate limited
+            return jsonify({"error": "you've been rate limited"}),
+            # consider adding a "retry after" message, retry after 30 minutes (how to do?)
+        else:
+            try:
+                global_cache.add_to_cache(token)
+                message = twilio_client.messages.create(
+                    body=message,
+                    from_=TWILIO_PHONE_NUMBER,
+                    to=recipient
+                )
+                _log_token(token, time.time(), "SMS")
+                return jsonify({"status": "success", "sid": message.sid}), 200
+            except Exception as e:
+                return jsonify({"error": str(e)}), 500
+
+    return app
 
 
 def _create_tables():
@@ -108,7 +112,7 @@ def _create_tables():
             cursor.execute(schema_sql)
 
 
-def _generate_token(user_id):
+def _generate_token(user_id: str):
     # inserts the provided token into the tokens table. If it already exists,
     # it will simply update the token's expiration date
     expiration = time.time() + timedelta(days=30).total_seconds()
@@ -122,8 +126,8 @@ def _generate_token(user_id):
 
     with psycopg2.connect(DB) as conn:
         with conn.cursor() as cursor:
-            cursor.execute("INSERT INTO tokens (token, expiration_date) VALUES (:token, :expiration_date) ON CONFLICT (token) DO UPDATE SET expiration_date = EXCLUDED.expiration_date;", {
-                           "token": token, "expiration_date": expiration})
+            cursor.execute(
+                "INSERT INTO tokens (token, expiration_date) VALUES (%s, %s) ON CONFLICT (token) DO UPDATE SET expiration_date = EXCLUDED.expiration_date;", (token, expiration))
 
     return token
 
@@ -147,7 +151,8 @@ def _token_is_expired(token) -> bool:
         with conn.cursor() as cursor:
             cursor.execute(
                 "SELECT expiration_date FROM tokens WHERE token = %s", (token,))
-            return cursor.fetchone() > time.time()
+            expiration_date = cursor.fetchone()[0]
+            return float(expiration_date) < time.time()
 
 
 def _get_all_tokens():
@@ -163,8 +168,8 @@ def _get_all_tokens():
 def _log_token(token: str, timestamp: float, message_type: str):
     with psycopg2.connect(DB) as conn:
         with conn.cursor() as cursor:
-            cursor.execute("INSERT INTO token_log (token, timestamp, message_type) VALUES (:token, :timestamp, :message_type)", {
-                           "token": token, "timestamp": timestamp, "message_type": message_type})
+            cursor.execute("INSERT INTO token_log (token, timestamp, message_type) VALUES (%s, %s, %s)",
+                           (token, timestamp, message_type))
 
 
 def start_updating_cache():
@@ -214,48 +219,9 @@ class Cache():
 global_cache = Cache()
 # todo: put the Cache class in a separate .py file for interface purposes
 
-
-def test_sms_messaging():
-    twilio_client = Client(TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN)
-
-    # data = request.get_json()
-    # recipient = data.get("to")
-    # message = data.get("message")
-    # token = request.headers.get('X-API-Key')
-    recipient = "9498149431"
-    message = "HELP ME"
-    token = "111"
-
-    if recipient == "" or message == "":
-        # checks that all fields are filled
-        return jsonify({"error": "recipient or message not provided!"}), 400
-    # elif not _validate_token(token):
-    #     # checks if token is a valid token
-    #     return jsonify({"error": "unauthorized token!"}), 401
-    # elif global_cache.contains_max(token):
-    #     print("BLUE")
-    #     # checks if token is rate limited
-    #     return jsonify({"error": "you've been rate limited"}),
-    #     # consider adding a "retry after" message, retry after 30 minutes (how to do?)
-    else:
-        try:
-            #global_cache.add_to_cache(token)
-            message = twilio_client.messages.create(
-                body=message,
-                from_=TWILIO_PHONE_NUMBER,
-                to=recipient
-            )
-            # _log_token(token, time.time(), "SMS")
-            return jsonify({"status": "success", "sid": message.sid}), 200
-        except Exception as e:
-            return jsonify({"error": str(e)}),
-
-
 if __name__ == "__main__":
     thread = threading.Thread(target=start_updating_cache, daemon=True)
     thread.start()
-
-    b = test_sms_messaging()
 
     app.run(debug=True)
 

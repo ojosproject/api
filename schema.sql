@@ -1,15 +1,15 @@
 CREATE TABLE IF NOT EXISTS tokens (
-    token STRING UNIQUE PRIMARY KEY,
-    expiration_date TEXT NOT NULL,
-) STRICT;
+    token TEXT UNIQUE PRIMARY KEY,
+    expiration_date NUMERIC NOT NULL
+);
 
 CREATE TABLE IF NOT EXISTS token_log (
     id SERIAL PRIMARY KEY,
     token TEXT REFERENCES tokens(token),
-    timestamp NUMERIC
+    timestamp NUMERIC,
     message_type TEXT -- SMS, email, etc
     -- count NUMERIC
-) STRICT;
+);
 /* 
 SERIAL is an integer type that is automatically assigned and automatically
 increments, making it perfect to serve as a primary key. 
