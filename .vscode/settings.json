@@ -3,5 +3,9 @@
         "editor.formatOnSave": true,
         "editor.defaultFormatter": "yzhang.markdown-all-in-one",
         "editor.rulers": [80]
-    }
+    },
+    "cSpell.words": [
+        "jsonify",
+        "Ojos"
+    ]
 }
