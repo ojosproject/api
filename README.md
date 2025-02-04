@@ -14,7 +14,7 @@ pip install -r requirements.txt
 ```
 
 ```bash
-flask --app app run
+flask --app src.app run
 ```
 
 ## License
