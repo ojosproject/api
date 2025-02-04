@@ -17,6 +17,17 @@ pip install -r requirements.txt
 flask --app src.app run
 ```
 
+To run tests, run:
+
+```shell
+coverage run -m pytest
+coverage xml
+```
+
+If you're using Visual Studio Code, install the
+[Coverage Gutters](https://marketplace.visualstudio.com/items?itemName=ryanluker.vscode-coverage-gutters)
+extension to see the code coverage.
+
 ## License
 
 [GNU General Public License v3.0](https://choosealicense.com/licenses/gpl-3.0/)
