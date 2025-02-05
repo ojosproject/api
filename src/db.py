@@ -15,3 +15,9 @@ def _create_tables():
     with psycopg2.connect(DB) as conn:
         with conn.cursor() as cursor:
             cursor.execute(schema_sql)
+
+def _drop_tables():
+    with psycopg2.connect(DB) as conn:
+        with conn.cursor() as cursor:
+            cursor.execute("DROP TABLE IF EXISTS tokens CASCADE")
+            cursor.execute("DROP TABLE IF EXISTS token_log CASCADE")

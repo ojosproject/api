@@ -1,18 +1,19 @@
 # auth.py
 # Ojos Project
-# 
+#
 # The aspect of the Iris API that works with authentication.
 import uuid
 import time
+from datetime import timedelta
 import psycopg2
 import jwt
 from flask import Blueprint
-from .db import _create_tables
 from flask import jsonify, request
-from datetime import timedelta, time
+from .db import _create_tables
 from .app import DB, JWT_SECRET_KEY
 
 bp = Blueprint('auth', __name__, url_prefix="/iris/auth")
+
 
 @bp.route("/register/", methods=["POST"])
 def register():
@@ -33,6 +34,7 @@ def register():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
+
 @bp.route("/update-token/", methods=["POST"])
 def update_token():
     try:
@@ -41,15 +43,13 @@ def update_token():
 
         token = request.json.get("token")
 
-        print("PURPLE")
         if _token_is_expired(token):
-            print("RED")
             token = _generate_token(str(user_id))
-            print(token)
 
         return jsonify({"token": token}), 200
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
 
 def _generate_token(user_id: str):
     # inserts the provided token into the tokens table. If it already exists,
