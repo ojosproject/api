@@ -9,7 +9,7 @@ from .app import TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER
 from .auth import _validate_token, _log_token
 from .cache import global_cache
 
-bp = Blueprint('relay', __name__, url_prefix='/iris/relay/')
+bp = Blueprint('relay', __name__, url_prefix='/iris/relay')
 
 @bp.route("/send-sms/", methods=["POST"])
 def send_sms():
@@ -26,13 +26,13 @@ def send_sms():
     elif not _validate_token(token):
         # checks if token is a valid token
         return jsonify({"error": "unauthorized token!"}), 401
-    elif global_cache.contains_max(token):
-        # checks if token is rate limited
-        return jsonify({"error": "you've been rate limited"}),
-        # consider adding a "retry after" message, retry after 30 minutes (how to do?)
+    # elif global_cache.contains_max(token):
+    #     # checks if token is rate limited
+    #     return jsonify({"error": "you've been rate limited"}), 429
+    #     # consider adding a "retry after" message, retry after 30 minutes (how to do?)
     else:
         try:
-            global_cache.add_to_cache(token)
+            # global_cache.add_to_cache(token)
             message = twilio_client.messages.create(
                 body=message,
                 from_=TWILIO_PHONE_NUMBER,
