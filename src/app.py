@@ -5,13 +5,11 @@ Twilio
 import os
 import threading
 import dotenv
-from .cache import start_threading
 from flask import Flask
 
 dotenv.load_dotenv(override=True)
 
 app = Flask(__name__)
-start_threading(testing=True)
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")

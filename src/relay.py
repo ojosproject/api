@@ -8,7 +8,6 @@ from twilio.rest import Client
 import psycopg2
 from .app import TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, DB
 from .auth import _validate_token, _log_token
-from .cache import global_cache
 
 bp = Blueprint('relay', __name__, url_prefix='/iris/relay')
 
