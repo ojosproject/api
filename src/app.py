@@ -5,12 +5,13 @@ Twilio
 import os
 import threading
 import dotenv
-from .cache import start_updating_cache
+from .cache import start_threading
 from flask import Flask
 
 dotenv.load_dotenv(override=True)
 
 app = Flask(__name__)
+start_threading(testing=True)
 
 TWILIO_ACCOUNT_SID = os.getenv("TWILIO_ACCOUNT_SID")
 TWILIO_AUTH_TOKEN = os.getenv("TWILIO_AUTH_TOKEN")
@@ -19,9 +20,6 @@ JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY")
 DB = os.getenv("INTERNAL_DB_LINK")
 
 if __name__ == "__main__":
-    thread = threading.Thread(target=start_updating_cache, daemon=True)
-    thread.start()
-
     app.run(debug=True)
 
 # things to keep an eye on:

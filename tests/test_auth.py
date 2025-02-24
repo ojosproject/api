@@ -6,13 +6,11 @@
 import pytest
 import time
 import psycopg2
-# from flask import Flask
 import jwt
 from src.db import _create_tables, _drop_tables
 import src.auth as auth
 from src.app import DB, JWT_SECRET_KEY
 from src.__init__ import create_app
-# from datetime import timedelta
 
 
 @pytest.fixture(autouse=True)
@@ -53,7 +51,7 @@ def test_generate_token_added_to_db():
 
 
 def test_register_tokens_successfully():
-    app = create_app()
+    app = create_app(testing=True)
     client = app.test_client()
     response = client.post("/iris/auth/register/")
     assert response.status_code == 200
@@ -79,7 +77,7 @@ def test_expired_tokens_updated():
     expired_token = _add_token(expired_expiration)
     added_token = _get_single_token()
 
-    app = create_app()
+    app = create_app(testing=True)
     client = app.test_client()
     payload = {"token": expired_token}
     response = client.post("/iris/auth/update-token/", json=payload)
@@ -95,7 +93,7 @@ def test_unexpired_tokens_not_updated():
     unexpired_token = _add_token(unexpired_expiration)
     added_token = _get_single_token()
 
-    app = create_app()
+    app = create_app(testing=True)
     client = app.test_client()
     payload = {"token": unexpired_token}
     response = client.post("/iris/auth/update-token/", json=payload)
@@ -109,7 +107,7 @@ def test_unexpired_tokens_not_updated():
 def test_error_returned_by_invalid_update_post_requests():
     invalid_token = "invalid_token"
 
-    app = create_app()
+    app = create_app(testing=True)
     client = app.test_client()
     payload = {"token": invalid_token}
     response = client.post("/iris/auth/update-token/", json=payload)

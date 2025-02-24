@@ -6,4 +6,4 @@
 from src import create_app
 
 def test_init():
-    assert bool(create_app())
+    assert bool(create_app(testing=True))

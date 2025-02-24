@@ -1,16 +1,31 @@
 # cache.py
 # Ojos Project
-# 
+#
 # Caching.
 import time
 import threading
 from collections import namedtuple
 
-def start_updating_cache():
-    # called in main to periodically update the cache in the background
+global_cache: list[dict[str:str, str:int]] = []
+
+def add_to_cache(token, timestamp):
+    global_cache.append({"token":token, "timestamp":timestamp})
+
+
+def start_threading(testing=False):
+    if not any(t.name == "CacheUpdater" for t in threading.enumerate()):
+        thread = threading.Thread(target=start_updating_cache, args=(testing,), name="CacheUpdater", daemon=True)
+        thread.start()
+
+
+def start_updating_cache(testing=False):
+    # called to periodically update the cache in the background
+    start = time.time()
     while True:
-        time.sleep(60)
-        global_cache.update_cache()
+        time.sleep(2)
+        # global_cache.update_cache()
+        if testing and (time.time() - start) > 6:
+            break
 
 
 class Cache():
@@ -46,9 +61,7 @@ class Cache():
         with self.lock:
             self.cache = {
                 token: token_log for token, token_log in self.cache.items() if (
-                    token_log.time_last_logged + 60) > time.time()
+                    time.time() - token_log.time_last_logged) < 60
             }
 
-
-global_cache = Cache()
 # todo: put the Cache class in a separate .py file for interface purposes

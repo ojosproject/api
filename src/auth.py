@@ -105,6 +105,7 @@ def _get_all_tokens():
 
 
 def _log_token(token: str, timestamp: float, message_type: str):
+    # message_type can only be: "SMS" or "email" for now
     with psycopg2.connect(DB) as conn:
         with conn.cursor() as cursor:
             cursor.execute("INSERT INTO token_log (token, timestamp, message_type) VALUES (%s, %s, %s)",
