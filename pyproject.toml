@@ -1,0 +1,20 @@
+[project]
+name = "api"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "coverage>=7.6.12",
+    "flask==3.1.0",
+    "gunicorn==23.0.0",
+    "psycopg2-binary==2.9.10",
+    "pyjwt==2.10.0",
+    "pytest>=8.3.4",
+    "python-dotenv==1.0.1",
+    "requests==2.32.3",
+    "twilio==9.3.6",
+    "uuid==1.30",
+]
+[project.scripts]
+tests = "coverage:pytest"
