@@ -3,7 +3,6 @@ app.py allows devices running iris to make third party API calls, such as to
 Twilio
 """
 import os
-import threading
 import dotenv
 from flask import Flask
 
@@ -23,5 +22,3 @@ if __name__ == "__main__":
 # things to keep an eye on:
 # - that passing in the db link as 1 argument will properly call it
 # - that the SERIAL type in postgresql will act as a properly self-generating id
-# - potentially, the Cache class won't be sufficient to handle a lot of traffic
-# look into a caching library like redis in this case

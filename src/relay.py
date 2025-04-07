@@ -19,7 +19,7 @@ def send_sms():
     data = request.get_json()
     recipient = data.get("to")
     message = data.get("message")
-    token = request.headers.get('X-API-Key')
+    token = data.get("token")
 
     if recipient == "" or message == "":
         # checks that all fields are filled
@@ -45,7 +45,7 @@ def send_sms():
             return jsonify({"error": str(e)}), 500
 
 
-def calls_in_past_30_minutes(token : str, current_timestamp : int) -> int:
+def calls_in_past_30_minutes(token: str, current_timestamp: int) -> int:
     """Returns the amount of times that a token has been logged within the
     past 30 minutes for the purposes of rate limiting
 

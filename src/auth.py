@@ -28,7 +28,7 @@ def register():
         # will generate a uuid here
         # todo: I REALLY THINK WE SHOULD BE GENERATING DEVICE IDS BY NOW
 
-        token = _generate_token(str(user_id))
+        token: str = _generate_token(str(user_id))
 
         return jsonify({"token": token}), 200
     except Exception as e:
@@ -48,10 +48,10 @@ def update_token():
 
         return jsonify({"token": token}), 200
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        return jsonify({"error": str(e) + token}), 500
 
 
-def _generate_token(user_id: str):
+def _generate_token(user_id: str) -> str:
     # inserts the provided token into the tokens table. If it already exists,
     # it will simply update the token's expiration date
     expiration = time.time() + timedelta(days=30).total_seconds()

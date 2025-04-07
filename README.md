@@ -17,6 +17,12 @@ pip install -r requirements.txt
 flask --app src.app run
 ```
 
+for development & testing, run:
+
+```bash
+flask --app src.__init__ run
+```
+
 To run tests, run:
 
 ```shell

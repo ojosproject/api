@@ -40,12 +40,10 @@ def test_sms_message_successfully_sent():
     token = _add_a_token()
 
     app = create_app(testing=True)
-    payload = {"to": "9498149431", "message": "this is test 1"}
-    headers = {"X-API-Key": token}
+    payload = {"to": "9498149431", "message": "this is test 1", "token": token}
 
     with app.test_client() as client:
-        response = client.post("/iris/relay/send-sms/",
-                               json=payload, headers=headers)
+        response = client.post("/iris/relay/send-sms/", json=payload)
 
     assert response.status_code == 200
     # can also verify this works if 9498149431 receives a text message
@@ -55,26 +53,24 @@ def test_sms_not_sent_if_no_message_provided():
     token = _add_a_token()
 
     app = create_app(testing=True)
-    payload = {"to": "9498149431", "message": ""} # message is empty string
-    headers = {"X-API-Key": token}
+    payload = {"to": "9498149431", "message": "",
+               "token": token}  # message is empty string
 
     with app.test_client() as client:
-        response = client.post("/iris/relay/send-sms/",
-                               json=payload, headers=headers)
+        response = client.post("/iris/relay/send-sms/", json=payload)
 
     assert response.status_code == 400
 
 
 def test_sms_not_sent_if_invalid_token_provided():
-    token = 12345 # token not existing in db
+    token = "abcd12345"  # token not existing in db
 
     app = create_app(testing=True)
-    payload = {"to": "9498149431", "message": "this won't send"}
-    headers = {"X-API-Key": token}
+    payload = {"to": "9498149431",
+               "message": "this won't send", "token": token}
 
     with app.test_client() as client:
-        response = client.post("/iris/relay/send-sms/",
-                               json=payload, headers=headers)
+        response = client.post("/iris/relay/send-sms/", json=payload)
 
     assert response.status_code == 401
 
@@ -94,11 +90,10 @@ def test_sms_not_sent_if_over_ten_api_calls():
     _log_token(token, time.time(), "SMS")
 
     app = create_app(testing=True)
-    payload = {"to": "9498149431", "message": "this won't send"}
-    headers = {"X-API-Key": token}
+    payload = {"to": "9498149431",
+               "message": "this won't send", "token": token}
 
     with app.test_client() as client:
-        response = client.post("/iris/relay/send-sms/",
-                               json=payload, headers=headers)
+        response = client.post("/iris/relay/send-sms/", json=payload)
 
     assert response.status_code == 429
